@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Upload, User, Package, Paintbrush, Box, Type, PawPrint, Utensils, CheckCircle, X, Home, Compass, Camera, Lock, LogOut, Menu, UserCircle } from 'lucide-react'
+import { User } from "@supabase/supabase-js";
+import { Upload,Package, User as Person, Paintbrush, Box, Type, PawPrint, Utensils, CheckCircle, X, Home, Compass, Camera, Lock, LogOut, Menu, UserCircle } from 'lucide-react'
 
 import { createClient } from "../../utils/supabase/client";
 
@@ -22,7 +23,7 @@ const LockedPageOverlay = () => (
   </div>
 );
 
-const PageWrapper = ({ children, isLocked, onLogin }: { children: React.ReactNode, isLocked: boolean, onLogin: () => void }) => (
+const PageWrapper = ({ children, isLocked }: { children: React.ReactNode, isLocked: boolean }) => (
   <div className="relative min-h-full">
     {children}
     {isLocked && <LockedPageOverlay />}
@@ -35,7 +36,7 @@ export function VisionaryTrainingComponent() {
   const [tutorialTab, setTutorialTab] = useState('Person')
   const tutorialTabs = ['Person', 'Product', 'Style', 'Pet']
   const [currentPage, setCurrentPage] = useState('Home')
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const supabase = createClient();
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
@@ -63,8 +64,8 @@ export function VisionaryTrainingComponent() {
   }, []);
 
   const typeButtons = [
-    { icon: <User size={24} />, label: 'Man' },
-    { icon: <User size={24} />, label: 'Woman' },
+    { icon: <Person size={24} />, label: 'Man' },
+    { icon: <Person size={24} />, label: 'Woman' },
     { icon: <Package size={24} />, label: 'Product' },
     { icon: <Paintbrush size={24} />, label: 'Style' },
     { icon: <Box size={24} />, label: 'Object' },
@@ -415,24 +416,6 @@ export function VisionaryTrainingComponent() {
     );
   };
 
-  const cardVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { 
-      opacity: 1, 
-      y: 0,
-      transition: { 
-        type: "spring",
-        stiffness: 260,
-        damping: 20
-      }
-    }
-  }
-
-  const buttonVariants = {
-    hover: { backgroundColor: "#1a1e19" },
-    tap: { scale: 0.98 }
-  }
-
   const renderPageContent = () => {
     const handleLogin = () => {
       router.push("/login");
@@ -539,7 +522,7 @@ export function VisionaryTrainingComponent() {
                       <div className="border-2 border-dashed border-[#222620] rounded-lg p-8 text-center cursor-pointer bg-[#a1e99b] flex flex-col items-center justify-center h-40">
                         <Upload size={40} className="text-[#222620] mb-3" />
                         <p className="text-[#222620] text-lg">
-                          Drag 'n' drop images here, or click to select
+                          Drag &apos;n&apos; drop images here, or click to select
                         </p>
                       </div>
                     </div>
@@ -556,7 +539,7 @@ export function VisionaryTrainingComponent() {
                       
                       <ul className="list-disc pl-5 space-y-2 mb-4">
                         <li>Training usually takes between 20 to 40 minutes.</li>
-                        <li>When your model is ready, we'll send you an email.</li>
+                        <li>When your model is ready, we&apos;ll send you an email.</li>
                         <li>No nudes / NSFW images allowed.</li>
                       </ul>
 
@@ -565,7 +548,7 @@ export function VisionaryTrainingComponent() {
                         <li><strong>Use Square Samples:</strong> For the best results, upload images with a 1:1 aspect ratio (square).</li>
                         <li><strong>Use Multiple Zoom Levels:</strong> Upload 10-20 high-quality photos of the person, object, or style you want to train on. If training on a person, we recommend using 10 close-ups (face only), 5 mid-shots (from the chest up), and 3 full-body shots.</li>
                         <li><strong>Add Variety:</strong> Change up poses, backgrounds, and where the subject is looking. This makes your model better.</li>
-                        <li>You'll be more likely to get a good model by uploading high quality samples.</li>
+                        <li>You&apos;ll be more likely to get a good model by uploading high quality samples.</li>
                       </ul>
 
                       <p className="mt-4 italic">Keep in mind there is no single best way to train a great model, it may take some experimentation to get the results.</p>
@@ -609,7 +592,7 @@ export function VisionaryTrainingComponent() {
 
     if (currentPage === 'Discover' || currentPage === 'New Model' || currentPage === 'Image to Video') {
       return (
-        <PageWrapper isLocked={!user} onLogin={handleLogin}>
+        <PageWrapper isLocked={!user}>
           {content()}
         </PageWrapper>
       );

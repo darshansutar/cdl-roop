@@ -5,14 +5,14 @@ import { useEffect } from 'react'
 export function GrainOverlay() {
   useEffect(() => {
     const noise = () => {
-      let canvas = document.createElement('canvas')
+      const canvas = document.createElement('canvas')
       canvas.width = 200
       canvas.height = 200
-      let ctx = canvas.getContext('2d')!
+      const ctx = canvas.getContext('2d')!
       
       for (let x = 0; x < canvas.width; x++) {
         for (let y = 0; y < canvas.height; y++) {
-          let value = Math.random() * 255
+          const value = Math.random() * 255
           ctx.fillStyle = `rgba(${value}, ${value}, ${value}, 0.5)`
           ctx.fillRect(x, y, 1, 1)
         }
