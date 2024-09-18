@@ -5,7 +5,7 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Visionary",
+  title: "CDL-ROOP",
   description: "Your AI-powered creative companion",
 };
 
