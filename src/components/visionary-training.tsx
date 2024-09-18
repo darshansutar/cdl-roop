@@ -417,9 +417,7 @@ export function VisionaryTrainingComponent() {
   };
 
   const renderPageContent = () => {
-    const handleLogin = () => {
-      router.push("/login");
-    };
+    
 
     const content = () => {
       switch (currentPage) {
