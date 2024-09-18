@@ -12,8 +12,7 @@ import { WelcomePage } from './WelcomePage'
 import LoginButton from './ui/LoginLogoutButton'
 import { useRouter } from 'next/navigation'
 import { signout } from '@/lib/auth-actions'
-
-const LockedPageOverlay = ({ onLogin }: { onLogin: () => void }) => (
+const LockedPageOverlay = () => (
   <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40">
     <div className="text-center bg-[#222620] p-8 rounded-lg">
       <Lock className="mx-auto mb-4 text-[#85e178]" size={48} />
@@ -26,7 +25,7 @@ const LockedPageOverlay = ({ onLogin }: { onLogin: () => void }) => (
 const PageWrapper = ({ children, isLocked, onLogin }: { children: React.ReactNode, isLocked: boolean, onLogin: () => void }) => (
   <div className="relative min-h-full">
     {children}
-    {isLocked && <LockedPageOverlay onLogin={onLogin} />}
+    {isLocked && <LockedPageOverlay />}
   </div>
 );
 
@@ -416,7 +415,23 @@ export function VisionaryTrainingComponent() {
     );
   };
 
+  const cardVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { 
+      opacity: 1, 
+      y: 0,
+      transition: { 
+        type: "spring",
+        stiffness: 260,
+        damping: 20
+      }
+    }
+  }
 
+  const buttonVariants = {
+    hover: { backgroundColor: "#1a1e19" },
+    tap: { scale: 0.98 }
+  }
 
   const renderPageContent = () => {
     const handleLogin = () => {

@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { signup } from "@/lib/auth-actions";
 import SignInWithGoogleButton from "@/components/SignInWithGoogleButton";
-import { StickyHeader } from "@/components/StickyHeader";
+
 
 export function SignUpForm() {
   const [error, setError] = useState<string | null>(null);
@@ -180,7 +180,7 @@ export function SignUpForm() {
             </form>
 
             <div className="mt-6">
-              {/* <SignInWithGoogleButton /> */}
+              <SignInWithGoogleButton />
             </div>
 
             <div className="mt-6 text-center text-sm">

@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react'
 import Link from 'next/link'
 import SignInWithGoogleButton from '@/components/SignInWithGoogleButton'
-import { StickyHeader } from '@/components/StickyHeader'
+// import { StickyHeader } from '@/components/StickyHeader'
 
 export function LoginForm() {
   const [error, setError] = useState<string | null>(null);
@@ -38,7 +38,7 @@ export function LoginForm() {
   return (
     <div className="min-h-screen flex flex-col bg-[#222620]">
       <Toaster position="top-center" reverseOrder={false} />
-      <StickyHeader isLoggedIn={false} />
+      {/* <StickyHeader isLoggedIn={false} /> */}
       <div className="flex-grow flex flex-col items-center justify-center px-4 py-12 -mt-16">
         <motion.div
           animate={{ rotate: 360 }}
