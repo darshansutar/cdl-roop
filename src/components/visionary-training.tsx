@@ -13,6 +13,8 @@ import { WelcomePage } from './WelcomePage'
 import LoginButton from './ui/LoginLogoutButton'
 import { useRouter } from 'next/navigation'
 import { signout } from '@/lib/auth-actions'
+import { startTraining } from '@/actions/trainingActions';
+
 const LockedPageOverlay = () => (
   <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40">
     <div className="text-center bg-[#222620] p-8 rounded-lg">
@@ -565,10 +567,11 @@ export function VisionaryTrainingComponent() {
                     </div>
 
                     <button
-                      
+                      onClick={handleStartTraining}
+                      disabled={isLoading}
                       className="w-full font-semibold py-4 rounded-xl bg-[#222620] text-[#85e178] text-xl mb-6"
                     >
-                      Start Training
+                      {isLoading ? 'Starting Training...' : 'Start Training'}
                     </button>
 
                     <div className="bg-[#a1e99b] rounded-xl p-6 text-[#222620]">
@@ -662,6 +665,41 @@ export function VisionaryTrainingComponent() {
 
   const handleImageDelete = (index: number) => {
     setUploadedImages(prevImages => prevImages.filter((_, i) => i !== index));
+  };
+
+  const handleStartTraining = async () => {
+    if (uploadedImages.length === 0) {
+      alert('Please upload at least one image.');
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const imageDataUrls = await Promise.all(
+        uploadedImages.map(async (image) => {
+          return new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(image);
+          });
+        })
+      );
+
+      const result = await startTraining({
+        modelName,
+        selectedType,
+        imageDataUrls,
+      });
+
+      console.log('Training started:', result);
+      // Handle the result (e.g., show a success message, redirect to a status page)
+    } catch (error) {
+      console.error('Error starting training:', error);
+      // Handle the error (e.g., show an error message)
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

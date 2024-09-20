@@ -38,7 +38,7 @@ export function WelcomePage({ showLoginButton }: { showLoginButton: boolean }) {
             fill="none"
             stroke="none"
           />
-          <text className="text-[#85e178] text-[12px] font-bold uppercase">
+          <text className="text-gray-200 text-[12px] font-bold uppercase">
             <textPath xlinkHref="#curve">
               CDL ROOP • CDL ROOP • CDL ROOP •
             </textPath>
