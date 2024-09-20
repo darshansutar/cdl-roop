@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { User } from "@supabase/supabase-js";
-import { Upload,Package, User as Person, Paintbrush, Box, Type, PawPrint, Utensils, CheckCircle, X, Home, Compass, Camera, Lock, LogOut, Menu, UserCircle } from 'lucide-react'
+import { Upload,Package, User as Person, Paintbrush, Box, Type, PawPrint, Utensils, CheckCircle, X, Home, Compass, Camera, Lock, LogOut, Menu, UserCircle, Trash2 } from 'lucide-react'
 
 import { createClient } from "../../utils/supabase/client";
 
@@ -42,6 +42,7 @@ export function VisionaryTrainingComponent() {
   const router = useRouter();
   const [showLoginButton, setShowLoginButton] = useState(!user);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [uploadedImages, setUploadedImages] = useState<File[]>([]);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -417,8 +418,6 @@ export function VisionaryTrainingComponent() {
   };
 
   const renderPageContent = () => {
-    
-
     const content = () => {
       switch (currentPage) {
         case 'Home':
@@ -517,12 +516,52 @@ export function VisionaryTrainingComponent() {
 
                     <div className="mb-6">
                       <h3 className="text-lg font-semibold mb-2">Upload Images</h3>
-                      <div className="border-2 border-dashed border-[#222620] rounded-lg p-8 text-center cursor-pointer bg-[#a1e99b] flex flex-col items-center justify-center h-40">
-                        <Upload size={40} className="text-[#222620] mb-3" />
-                        <p className="text-[#222620] text-lg">
-                          Drag &apos;n&apos; drop images here, or click to select
-                        </p>
-                      </div>
+                      <label htmlFor="imageUpload" className="block">
+                        <div className="border-2 border-dashed border-[#222620] rounded-lg p-4 text-center cursor-pointer bg-[#a1e99b] flex flex-col items-center justify-center min-h-[200px]">
+                          {uploadedImages.length === 0 ? (
+                            <>
+                              <Upload size={40} className="text-[#222620] mb-3" />
+                              <p className="text-[#222620] text-lg">
+                                Drag 'n' drop images here, or click to select
+                              </p>
+                            </>
+                          ) : (
+                            <div className="grid grid-cols-3 gap-4 w-full">
+                              {uploadedImages.map((image, index) => (
+                                <div key={index} className="relative">
+                                  <img
+                                    src={URL.createObjectURL(image)}
+                                    alt={`Uploaded ${index + 1}`}
+                                    className="w-full h-24 object-cover rounded-lg"
+                                  />
+                                  <button
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      handleImageDelete(index);
+                                    }}
+                                    className="absolute top-1 right-1 bg-[#222620] text-[#85e178] p-1 rounded-full"
+                                  >
+                                    <Trash2 size={12} />
+                                  </button>
+                                </div>
+                              ))}
+                              {uploadedImages.length < 20 && (
+                                <div className="flex items-center justify-center h-24 bg-[#222620] text-[#85e178] rounded-lg">
+                                  <Upload size={24} />
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </label>
+                      <input
+                        id="imageUpload"
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={handleImageUpload}
+                        className="hidden"
+                      />
                     </div>
 
                     <button
@@ -612,6 +651,17 @@ export function VisionaryTrainingComponent() {
     
     // Redirect to the home page
     router.push('/');
+  };
+
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files) {
+      const newImages = Array.from(event.target.files);
+      setUploadedImages(prevImages => [...prevImages, ...newImages]);
+    }
+  };
+
+  const handleImageDelete = (index: number) => {
+    setUploadedImages(prevImages => prevImages.filter((_, i) => i !== index));
   };
 
   return (
@@ -714,4 +764,3 @@ export function VisionaryTrainingComponent() {
     </div>
   )
 }
-

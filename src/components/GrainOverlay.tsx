@@ -37,9 +37,11 @@ export function GrainOverlay() {
     document.body.appendChild(overlay)
 
     return () => {
-      document.body.removeChild(overlay)
-    }
-  }, [])
+      if (document.body.contains(overlay)) {
+        document.body.removeChild(overlay);
+      }
+    };
+  }, []);
 
   return null
 }

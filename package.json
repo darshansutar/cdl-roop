@@ -15,9 +15,12 @@
     "@radix-ui/react-slot": "^1.1.0",
     "@supabase/ssr": "^0.5.1",
     "@supabase/supabase-js": "^2.45.4",
+    "axios": "^1.7.7",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
+    "formidable": "^3.5.1",
     "framer-motion": "^11.5.4",
+    "jszip": "^3.10.1",
     "lucide-react": "^0.441.0",
     "next": "14.2.11",
     "react": "^18",
@@ -28,6 +31,7 @@
     "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
+    "@types/formidable": "^3.4.5",
     "@types/next": "^8.0.7",
     "@types/node": "^20.16.5",
     "@types/react": "^18",

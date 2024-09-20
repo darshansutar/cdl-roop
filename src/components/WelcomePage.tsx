@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { Brain, Image as ImageIcon, Video, Clock } from 'lucide-react'
 import LoginButton from './ui/LoginLogoutButton'
 
+
 export function WelcomePage({ showLoginButton }: { showLoginButton: boolean }) {
 
   const features = [
@@ -63,6 +64,7 @@ export function WelcomePage({ showLoginButton }: { showLoginButton: boolean }) {
           </motion.div>
         ))}
       </div>
+    
 
       {showLoginButton && <LoginButton />}
     </div>
