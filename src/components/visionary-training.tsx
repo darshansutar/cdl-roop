@@ -522,7 +522,7 @@ export function VisionaryTrainingComponent() {
                             <>
                               <Upload size={40} className="text-[#222620] mb-3" />
                               <p className="text-[#222620] text-lg">
-                                Drag 'n' drop images here, or click to select
+                                Drag &apos;n&apos; drop images here, or click to select
                               </p>
                             </>
                           ) : (
