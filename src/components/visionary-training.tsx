@@ -1,9 +1,9 @@
 'use client'
-
-import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
+import { toast } from 'react-hot-toast'
+import { useState, useEffect, useRef } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { User } from "@supabase/supabase-js";
-import { Upload,Package, User as Person, Paintbrush, Box, Type, PawPrint, Utensils, CheckCircle, X, Home, Compass, Camera, Lock, LogOut, Menu, UserCircle, Trash2 } from 'lucide-react'
+import { Upload,Package, User as Person, Paintbrush, Box, Type, PawPrint, Utensils, CheckCircle, X, Home, Compass, Camera, Lock, LogOut, Menu, UserCircle, Trash2, Download } from 'lucide-react'
 
 import { createClient } from "../../utils/supabase/client";
 
@@ -45,6 +45,13 @@ export function VisionaryTrainingComponent() {
   const [showLoginButton, setShowLoginButton] = useState(!user);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [uploadedImages, setUploadedImages] = useState<File[]>([]);
+  const [trainingProgress, setTrainingProgress] = useState(0);
+  const [trainingRequestId, setTrainingRequestId] = useState<string | null>(null);
+  const [trainingStatus, setTrainingStatus] = useState<'idle' | 'training' | 'completed' | 'failed'>('idle');
+  const [trainingOutput, setTrainingOutput] = useState<string | null>(null);
+  const [outputFileUrl, setOutputFileUrl] = useState<string | null>(null);
+  const [modelPath, setModelPath] = useState<string | null>(null);
+  const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -65,6 +72,144 @@ export function VisionaryTrainingComponent() {
       window.removeEventListener('userLoggedOut', handleLogout);
     };
   }, []);
+
+  useEffect(() => {
+    if (trainingRequestId) {
+      const checkStatus = async () => {
+        try {
+          const response = await fetch(`/api/training-status?requestId=${trainingRequestId}`);
+          if (response.ok) {
+            const data = await response.json();
+            setTrainingProgress(data.progress);
+            setTrainingStatus(data.status);
+            setOutputFileUrl(data.outputFileUrl);
+            setModelPath(data.modelPath);
+
+            if (data.status === 'completed' || data.status === 'failed') {
+              clearInterval(statusInterval);
+            }
+          } else {
+            console.error('Failed to fetch training status');
+          }
+        } catch (error) {
+          console.error('Error fetching training status:', error);
+        }
+      };
+
+      const statusInterval = setInterval(checkStatus, 5000); // Check every 5 seconds
+
+      return () => clearInterval(statusInterval);
+    }
+  }, [trainingRequestId]);
+
+  const fetchTrainingOutput = async (requestId: string) => {
+    try {
+      const response = await fetch(`/api/training-output?requestId=${requestId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setTrainingOutput(data.output);
+        setOutputFileUrl(data.outputFileUrl);
+      } else {
+        console.error('Failed to fetch training output');
+      }
+    } catch (error) {
+      console.error('Error fetching training output:', error);
+    }
+  };
+
+  const handleDownloadModel = async () => {
+    if (!modelPath) return;
+
+    try {
+      const response = await fetch(`/api/download-model?modelPath=${encodeURIComponent(modelPath)}`);
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = `model-${modelName}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+      } else {
+        console.error('Failed to download model');
+        toast.error('Failed to download model. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error downloading model:', error);
+      toast.error('An error occurred while downloading the model. Please try again.');
+    }
+  };
+
+  const renderTrainingProgress = () => {
+    if (trainingStatus === 'idle') {
+      return null;
+    }
+
+    return (
+      <AnimatePresence>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -20 }}
+          className="mt-6 p-4 bg-[#222620] rounded-xl"
+        >
+          <h4 className="text-lg font-semibold mb-2 text-[#85e178]">Training Progress</h4>
+          <div className="w-full bg-[#85e178] bg-opacity-20 rounded-full h-2.5 mb-4">
+            <motion.div
+              className="bg-[#85e178] h-2.5 rounded-full"
+              initial={{ width: 0 }}
+              animate={{ width: `${trainingProgress}%` }}
+              transition={{ duration: 0.5 }}
+            />
+          </div>
+          <p className="text-[#85e178]">{trainingProgress}% Complete</p>
+          {trainingStatus === 'completed' && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="mt-4"
+            >
+              <h5 className="text-lg font-semibold mb-2 text-[#85e178]">Training Completed!</h5>
+              {outputFileUrl && (
+                <div className="mb-4">
+                  <h6 className="text-md font-semibold mb-2 text-[#85e178]">Output File:</h6>
+                  <a
+                    href={outputFileUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[#85e178] underline hover:text-[#a1e99b]"
+                  >
+                    View Output File
+                  </a>
+                </div>
+              )}
+              {modelPath && (
+                <button
+                  onClick={handleDownloadModel}
+                  className="flex items-center justify-center w-full py-2 px-4 bg-[#85e178] text-[#222620] rounded-lg hover:bg-[#a1e99b] transition-colors"
+                >
+                  <Download size={20} className="mr-2" />
+                  Download Model
+                </button>
+              )}
+            </motion.div>
+          )}
+          {trainingStatus === 'failed' && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="mt-4"
+            >
+              <h5 className="text-lg font-semibold mb-2 text-red-500">Training Failed</h5>
+              <p className="text-red-400">Please try again or contact support if the issue persists.</p>
+            </motion.div>
+          )}
+        </motion.div>
+      </AnimatePresence>
+    );
+  };
 
   const typeButtons = [
     { icon: <Person size={24} />, label: 'Man' },
@@ -568,11 +713,12 @@ export function VisionaryTrainingComponent() {
 
                     <button
                       onClick={handleStartTraining}
-                      disabled={isLoading}
+                      disabled={isLoading || trainingStatus !== 'idle'}
                       className="w-full font-semibold py-4 rounded-xl bg-[#222620] text-[#85e178] text-xl mb-6"
                     >
-                      {isLoading ? 'Starting Training...' : 'Start Training'}
+                      {isLoading ? 'Starting Training...' : trainingStatus === 'idle' ? 'Start Training' : 'Training in Progress'}
                     </button>
+                    {renderTrainingProgress()}
 
                     <div className="bg-[#a1e99b] rounded-xl p-6 text-[#222620]">
                       <h4 className="text-lg font-semibold mb-3">Important Details & Tips</h4>
@@ -674,6 +820,7 @@ export function VisionaryTrainingComponent() {
     }
 
     setIsLoading(true);
+    setTrainingStatus('training');
 
     try {
       const imageDataUrls = await Promise.all(
@@ -691,17 +838,39 @@ export function VisionaryTrainingComponent() {
         selectedType,
         imageDataUrls,
       });
-
-      console.log('Training started:', result);
-      // Handle the result (e.g., show a success message, redirect to a status page)
+      if (result.success && result.requestId) {
+        setTrainingRequestId(result.requestId);
+        // Start progress animation
+        startProgressAnimation();
+      } else {
+        console.error('Error starting training:', result.error);
+        toast.error('Failed to start training. Please try again.');
+      }
     } catch (error) {
       console.error('Error starting training:', error);
-      // Handle the error (e.g., show an error message)
+      toast.error('An error occurred while starting the training. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
+  const startProgressAnimation = () => {
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current);
+    }
+
+    progressIntervalRef.current = setInterval(() => {
+      setTrainingProgress((prevProgress) => {
+        if (prevProgress >= 100) {
+          clearInterval(progressIntervalRef.current!);
+          return 100;
+        }
+        return prevProgress + 1;
+      });
+    }, 1000); // Update every second
+  };
+
+ 
   return (
     <div className="min-h-screen bg-[#222620] text-[#85e178] flex flex-col">
       <header className="sticky top-0 z-50 bg-[#85e178] text-[#222620] p-4 shadow-md">

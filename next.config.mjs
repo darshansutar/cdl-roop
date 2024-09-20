@@ -5,8 +5,21 @@ const nextConfig = {
   },
   experimental: {
     serverActions: {
-      bodySizeLimit: '10mb' // Increase this value as needed
+      bodySizeLimit: '100mb' // Increase this value as needed
     }
+  },
+  async headers() {
+    return [
+      {
+        source: '/api/download-model',
+        headers: [
+          {
+            key: 'Content-Disposition',
+            value: 'attachment',
+          },
+        ],
+      },
+    ];
   },
 };
 

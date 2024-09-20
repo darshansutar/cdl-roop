@@ -2,6 +2,7 @@
 
 import * as fal from "@fal-ai/serverless-client";
 import JSZip from 'jszip';
+import { createClient } from '../../utils/supabase/server';
 
 export async function startTraining({
   modelName,
@@ -29,7 +30,7 @@ export async function startTraining({
       input: {
         images_data_url: zipUrl,
         trigger_word: modelName,
-        steps: 1000, // You can adjust this or make it configurable
+        steps: 10, // You can adjust this or make it configurable
         rank: 16, // You can adjust this or make it configurable
         learning_rate: 0.0004, // You can adjust this or make it configurable
         caption_dropout_rate: 0.05, // You can adjust this or make it configurable
@@ -41,4 +42,26 @@ export async function startTraining({
     console.error('Error starting training:', error);
     return { success: false, error: 'Failed to start training' };
   }
+}
+
+export async function checkTrainingStatus(requestId: string) {
+  const supabase = createClient();
+  
+  const { data, error } = await supabase
+    .from('training_requests')
+    .select('status, progress, output_file_url, model_path')
+    .eq('id', requestId)
+    .single();
+
+  if (error) {
+    console.error('Error checking training status:', error);
+    return { error: 'Failed to check training status' };
+  }
+
+  return {
+    status: data.status,
+    progress: data.progress,
+    outputFileUrl: data.output_file_url,
+    modelPath: data.model_path
+  };
 }
