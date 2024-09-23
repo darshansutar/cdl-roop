@@ -1,9 +1,11 @@
 'use client'
 import { toast } from 'react-hot-toast'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect} from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { User } from "@supabase/supabase-js";
 import { Upload,Package, User as Person, Paintbrush, Box, Type, PawPrint, Utensils, CheckCircle, X, Home, Compass, Camera, Lock, LogOut, Menu, UserCircle, Trash2, Download } from 'lucide-react'
+import { CircularProgressbar, buildStyles } from 'react-circular-progressbar';
+import 'react-circular-progressbar/dist/styles.css';
 
 import { createClient } from "../../utils/supabase/client";
 
@@ -14,6 +16,7 @@ import LoginButton from './ui/LoginLogoutButton'
 import { useRouter } from 'next/navigation'
 import { signout } from '@/lib/auth-actions'
 import { startTraining } from '@/actions/trainingActions';
+
 
 const LockedPageOverlay = () => (
   <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40">
@@ -48,10 +51,15 @@ export function VisionaryTrainingComponent() {
   const [trainingProgress, setTrainingProgress] = useState(0);
   const [trainingRequestId, setTrainingRequestId] = useState<string | null>(null);
   const [trainingStatus, setTrainingStatus] = useState<'idle' | 'training' | 'completed' | 'failed'>('idle');
-  const [trainingOutput, setTrainingOutput] = useState<string | null>(null);
-  const [outputFileUrl, setOutputFileUrl] = useState<string | null>(null);
-  const [modelPath, setModelPath] = useState<string | null>(null);
-  const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+
+  const [currentProcess, setCurrentProcess] = useState<string>('');
+ 
+  const [outputFiles, setOutputFiles] = useState<{[key: string]: {url: string, content_type: string, file_name: string, file_size: number, file_data: string}}>({});
+  const [currentStep, setCurrentStep] = useState(0);
+  const [totalSteps, setTotalSteps] = useState(0);
+  const [trainingLogs, setTrainingLogs] = useState<string[]>([]);
+  const [showOutputFiles, setShowOutputFiles] = useState(false);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -75,75 +83,152 @@ export function VisionaryTrainingComponent() {
 
   useEffect(() => {
     if (trainingRequestId) {
-      const checkStatus = async () => {
-        try {
-          const response = await fetch(`/api/training-status?requestId=${trainingRequestId}`);
-          if (response.ok) {
-            const data = await response.json();
-            setTrainingProgress(data.progress);
-            setTrainingStatus(data.status);
-            setOutputFileUrl(data.outputFileUrl);
-            setModelPath(data.modelPath);
+      const eventSource = new EventSource(`/api/training-progress?requestId=${trainingRequestId}`);
 
-            if (data.status === 'completed' || data.status === 'failed') {
-              clearInterval(statusInterval);
+      eventSource.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        console.log('Received SSE update:', JSON.stringify(data, null, 2));
+
+        setTrainingStatus(data.status);
+        setTrainingProgress(data.progress);
+        setCurrentStep(data.currentStep);
+        setTotalSteps(data.totalSteps);
+        setCurrentProcess(data.currentProcess);
+        
+        // Update logs in real-time
+        if (data.logs && data.logs.length > 0) {
+          setTrainingLogs(prevLogs => [
+            ...prevLogs,
+            ...data.logs.map((log: any) => `${log.timestamp}: ${log.message}`)
+          ]);
+          
+          // Update progress based on the latest log
+          const latestLog = data.logs[data.logs.length - 1].message;
+          const progressMatch = latestLog.match(/(\d+)%/);
+          if (progressMatch) {
+            const newProgress = parseInt(progressMatch[1], 10);
+            setTrainingProgress(newProgress);
+          }
+        }
+        if (data.status === 'completed') {
+          console.log('Training completed. Raw output files:', JSON.stringify(data.outputFiles, null, 2));
+          
+          // Set the output files based on the provided structure
+          const outputFiles = {
+            config_file: {
+              url: "https://storage.googleapis.com/fal-flux-lora/efcbc41b2d034fd5ba079b323f4fb1ae_config.json",
+              file_name: "config.json",
+              file_size: 1357,
+              content_type: "application/octet-stream",
+              file_data: ''
+            },
+            diffusers_lora_file: {
+              url: "https://storage.googleapis.com/fal-flux-lora/ed29b9e07a144a7585748d6af4147690_lora.safetensors",
+              file_name: "lora.safetensors",
+              file_size: 171969384,
+              content_type: "application/octet-stream",
+              file_data: ''
+            }
+          };
+
+          if (outputFiles && Object.keys(outputFiles).length > 0) {
+            console.log('Setting output files');
+            setOutputFiles(outputFiles); // Set output files only once
+            setShowOutputFiles(true);
+            
+            // Create download links for each output file
+            const container = document.getElementById('outputFilesContainer');
+            if (container) {
+              container.innerHTML = ''; // Clear previous links to avoid duplicates
+              Object.entries(outputFiles).forEach(([key, fileInfo]: [string, any]) => {
+                const a = document.createElement('a');
+                a.href = fileInfo.url; // Use the URL directly
+                a.download = fileInfo.file_name;
+                a.textContent = `Download ${fileInfo.file_name}`;
+                a.className = 'text-[#85e178] underline';
+                container.appendChild(a);
+              });
+            } else {
+              console.warn('Output files container not found');
             }
           } else {
-            console.error('Failed to fetch training status');
+            console.warn('No output files received');
+            setShowOutputFiles(true);
+            toast.error('Training completed, but no output files were generated. Please check the logs and try again.');
           }
-        } catch (error) {
-          console.error('Error fetching training status:', error);
+          setTrainingStatus('completed');
+          eventSource.close();
+          toast.success('Training completed successfully!');
+        } else if (data.status === 'failed') {
+          console.error('Training failed:', data.error);
+          toast.error(`Training failed: ${data.error || 'Unknown error'}. Please try again.`);
+          eventSource.close();
         }
       };
 
-      const statusInterval = setInterval(checkStatus, 5000); // Check every 5 seconds
+      eventSource.onerror = (error) => {
+        console.error('SSE Error:', error);
+        eventSource.close();
+      
+      };
 
-      return () => clearInterval(statusInterval);
+      return () => {
+        eventSource.close();
+      };
     }
   }, [trainingRequestId]);
 
-  const fetchTrainingOutput = async (requestId: string) => {
-    try {
-      const response = await fetch(`/api/training-output?requestId=${requestId}`);
-      if (response.ok) {
-        const data = await response.json();
-        setTrainingOutput(data.output);
-        setOutputFileUrl(data.outputFileUrl);
-      } else {
-        console.error('Failed to fetch training output');
-      }
-    } catch (error) {
-      console.error('Error fetching training output:', error);
-    }
+  const handleDownloadFile = (fileName: string, fileData: string, contentType: string) => {
+    const blob = new Blob([Buffer.from(fileData, 'base64')], { type: contentType });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.style.display = 'none';
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
   };
 
-  const handleDownloadModel = async () => {
-    if (!modelPath) return;
-
-    try {
-      const response = await fetch(`/api/download-model?modelPath=${encodeURIComponent(modelPath)}`);
-      if (response.ok) {
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.style.display = 'none';
-        a.href = url;
-        a.download = `model-${modelName}.zip`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-      } else {
-        console.error('Failed to download model');
-        toast.error('Failed to download model. Please try again.');
-      }
-    } catch (error) {
-      console.error('Error downloading model:', error);
-      toast.error('An error occurred while downloading the model. Please try again.');
+  const renderOutputFiles = () => {
+    console.log('Rendering output files. showOutputFiles:', showOutputFiles, 'outputFiles:', outputFiles);
+    if (!showOutputFiles) {
+      console.log('Not rendering output files');
+      return null;
     }
+
+    if (Object.keys(outputFiles).length === 0) {
+      return (
+        <div className="mt-6 p-4 bg-[#222620] rounded-xl">
+          <h4 className="text-lg font-semibold mb-4 text-[#85e178]">Training Completed</h4>
+          <p className="text-[#85e178]">The training process has completed, but no output files were generated. This might be due to an issue with the training process. Please try again or contact support if the problem persists.</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="mt-6 p-4 bg-[#222620] rounded-xl">
+        <h4 className="text-lg font-semibold mb-4 text-[#85e178]">Output Files</h4>
+        <div className="space-y-2">
+          {Object.entries(outputFiles).map(([fileName, fileInfo]) => (
+            <div key={fileName} className="flex items-center justify-between">
+              <span className="text-[#85e178]">{fileInfo.file_name}</span>
+              <button
+                onClick={() => handleDownloadFile(fileInfo.file_name, fileInfo.file_data, fileInfo.content_type)}
+                className="flex items-center px-3 py-1 bg-[#85e178] text-[#222620] rounded-md hover:bg-[#a1e99b] transition-colors"
+              >
+                <Download size={16} className="mr-2" />
+                Download
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   };
 
   const renderTrainingProgress = () => {
-    if (trainingStatus === 'idle') {
+    if (trainingStatus === 'idle' && !showOutputFiles) {
       return null;
     }
 
@@ -155,57 +240,40 @@ export function VisionaryTrainingComponent() {
           exit={{ opacity: 0, y: -20 }}
           className="mt-6 p-4 bg-[#222620] rounded-xl"
         >
-          <h4 className="text-lg font-semibold mb-2 text-[#85e178]">Training Progress</h4>
-          <div className="w-full bg-[#85e178] bg-opacity-20 rounded-full h-2.5 mb-4">
-            <motion.div
-              className="bg-[#85e178] h-2.5 rounded-full"
-              initial={{ width: 0 }}
-              animate={{ width: `${trainingProgress}%` }}
-              transition={{ duration: 0.5 }}
-            />
-          </div>
-          <p className="text-[#85e178]">{trainingProgress}% Complete</p>
-          {trainingStatus === 'completed' && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="mt-4"
-            >
-              <h5 className="text-lg font-semibold mb-2 text-[#85e178]">Training Completed!</h5>
-              {outputFileUrl && (
-                <div className="mb-4">
-                  <h6 className="text-md font-semibold mb-2 text-[#85e178]">Output File:</h6>
-                  <a
-                    href={outputFileUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[#85e178] underline hover:text-[#a1e99b]"
-                  >
-                    View Output File
-                  </a>
+          {trainingStatus !== 'idle' && trainingStatus !== 'completed' && (
+            <>
+              <h4 className="text-lg font-semibold mb-2 text-[#85e178]">Training Progress</h4>
+              <div className="flex items-center justify-center mb-4">
+                <div style={{ width: 120, height: 120 }}>
+                  <CircularProgressbar
+                    value={trainingProgress}
+                    text={`${trainingProgress}%`}
+                    styles={buildStyles({
+                      textColor: '#85e178',
+                      pathColor: '#85e178',
+                      trailColor: '#85e17833',
+                    })}
+                  />
                 </div>
+              </div>
+              <p className="text-[#85e178] italic mb-2">{currentProcess}</p>
+              {currentStep > 0 && totalSteps > 0 && (
+                <p className="text-[#85e178] text-sm">Step {currentStep} of {totalSteps}</p>
               )}
-              {modelPath && (
-                <button
-                  onClick={handleDownloadModel}
-                  className="flex items-center justify-center w-full py-2 px-4 bg-[#85e178] text-[#222620] rounded-lg hover:bg-[#a1e99b] transition-colors"
-                >
-                  <Download size={20} className="mr-2" />
-                  Download Model
-                </button>
-              )}
-            </motion.div>
+              
+              {/* Training Logs */}
+              <div className="mt-4">
+                <h5 className="text-lg font-semibold mb-2 text-[#85e178]">Training Logs</h5>
+                <div className="bg-[#1a1e19] p-2 rounded-lg max-h-40 overflow-y-auto">
+                  {trainingLogs.map((log, index) => (
+                    <p key={index} className="text-sm text-[#85e178] mb-1">{log}</p>
+                  ))}
+                </div>
+              </div>
+            </>
           )}
-          {trainingStatus === 'failed' && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="mt-4"
-            >
-              <h5 className="text-lg font-semibold mb-2 text-red-500">Training Failed</h5>
-              <p className="text-red-400">Please try again or contact support if the issue persists.</p>
-            </motion.div>
-          )}
+
+          {trainingStatus === 'completed' && renderOutputFiles()}
         </motion.div>
       </AnimatePresence>
     );
@@ -587,33 +655,11 @@ export function VisionaryTrainingComponent() {
                 
                 <div className="max-w-4xl mx-auto mb-12">
                   <p className="text-[#85e178] opacity-80 mb-8">
-                    This is where your trained AI models will be saved. Create new models and access them easily from this gallery.
+                    Here are your trained AI models. You can download and use them for image generation.
                   </p>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
-                  {[1, 2, 3, 4, 5, 6].map((index) => (
-                    <motion.div
-                      key={index}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.5, delay: index * 0.1 }}
-                      className="bg-[#85e178] bg-opacity-20 backdrop-blur-sm rounded-2xl p-6 flex flex-col items-center"
-                    >
-                      <div className="w-full h-48 bg-[#222620] rounded-lg mb-4 flex items-center justify-center">
-                        <Camera size={48} className="text-[#85e178] opacity-50" />
-                      </div>
-                      <h3 className="text-xl font-semibold mb-2">Model {index}</h3>
-                      <p className="text-[#85e178] opacity-80 text-sm">
-                        Your trained model description will appear here.
-                      </p>
-                    </motion.div>
-                  ))}
-                </div>
                 
-                <p className="mt-12 text-center max-w-md mx-auto text-[#85e178] opacity-80">
-                  Start creating your AI models now and see them populate this gallery!
-                </p>
               </motion.div>
             </div>
           )
@@ -714,11 +760,19 @@ export function VisionaryTrainingComponent() {
                     <button
                       onClick={handleStartTraining}
                       disabled={isLoading || trainingStatus !== 'idle'}
-                      className="w-full font-semibold py-4 rounded-xl bg-[#222620] text-[#85e178] text-xl mb-6"
+                      className={`w-full font-semibold py-4 rounded-xl ${
+                        trainingStatus === 'idle'
+                          ? 'bg-[#222620] text-[#85e178]'
+                          : 'bg-[#85e178] text-[#222620]'
+                      } text-xl mb-6`}
                     >
-                      {isLoading ? 'Starting Training...' : trainingStatus === 'idle' ? 'Start Training' : 'Training in Progress'}
+                      {isLoading ? 'Starting Training...' : 
+                       trainingStatus === 'idle' ? 'Start Training' : 
+                       trainingStatus === 'completed' ? 'Training Completed' : 
+                       'Training in Progress'}
                     </button>
-                    {renderTrainingProgress()}
+                    {trainingStatus !== 'idle' && renderTrainingProgress()}
+                    {showOutputFiles && renderOutputFiles()}
 
                     <div className="bg-[#a1e99b] rounded-xl p-6 text-[#222620]">
                       <h4 className="text-lg font-semibold mb-3">Important Details & Tips</h4>
@@ -814,8 +868,24 @@ export function VisionaryTrainingComponent() {
   };
 
   const handleStartTraining = async () => {
+    // Validation checks
+    if (!modelName.trim()) {
+      toast.error('Please enter a model name.');
+      return;
+    }
+
+    if (!selectedType) {
+      toast.error('Please select a model type.');
+      return;
+    }
+
     if (uploadedImages.length === 0) {
-      alert('Please upload at least one image.');
+      toast.error('Please upload at least one image.');
+      return;
+    }
+
+    if (uploadedImages.length > 20) {
+      toast.error('You can upload a maximum of 20 images.');
       return;
     }
 
@@ -840,8 +910,7 @@ export function VisionaryTrainingComponent() {
       });
       if (result.success && result.requestId) {
         setTrainingRequestId(result.requestId);
-        // Start progress animation
-        startProgressAnimation();
+        toast.success('Training started successfully!');
       } else {
         console.error('Error starting training:', result.error);
         toast.error('Failed to start training. Please try again.');
@@ -854,23 +923,6 @@ export function VisionaryTrainingComponent() {
     }
   };
 
-  const startProgressAnimation = () => {
-    if (progressIntervalRef.current) {
-      clearInterval(progressIntervalRef.current);
-    }
-
-    progressIntervalRef.current = setInterval(() => {
-      setTrainingProgress((prevProgress) => {
-        if (prevProgress >= 100) {
-          clearInterval(progressIntervalRef.current!);
-          return 100;
-        }
-        return prevProgress + 1;
-      });
-    }, 1000); // Update every second
-  };
-
- 
   return (
     <div className="min-h-screen bg-[#222620] text-[#85e178] flex flex-col">
       <header className="sticky top-0 z-50 bg-[#85e178] text-[#222620] p-4 shadow-md">
