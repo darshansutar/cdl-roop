@@ -772,7 +772,9 @@ export function VisionaryTrainingComponent() {
                        'Training in Progress'}
                     </button>
                     {trainingStatus !== 'idle' && renderTrainingProgress()}
-                    {showOutputFiles && renderOutputFiles()}
+                    {/* {showOutputFiles && renderOutputFiles()} */}
+                    <br />
+                    <br />
 
                     <div className="bg-[#a1e99b] rounded-xl p-6 text-[#222620]">
                       <h4 className="text-lg font-semibold mb-3">Important Details & Tips</h4>
@@ -920,6 +922,11 @@ export function VisionaryTrainingComponent() {
       toast.error('An error occurred while starting the training. Please try again.');
     } finally {
       setIsLoading(false);
+      // Reset the state to default after training is completed
+      setModelName(''); // Reset model name
+      setSelectedType(''); // Reset selected type
+      setUploadedImages([]); // Clear uploaded images
+      setTrainingStatus('idle'); // Reset training status
     }
   };
 
