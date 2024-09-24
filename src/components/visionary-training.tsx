@@ -758,17 +758,32 @@ export function VisionaryTrainingComponent() {
                     </div>
 
                     <button
-                      onClick={handleStartTraining}
-                      disabled={isLoading || trainingStatus !== 'idle'}
+                      onClick={() => {
+                        if (trainingStatus === 'completed') {
+                          // Reset the training state and prepare for a new training session
+                          setTrainingStatus('idle');
+                          setTrainingProgress(0);
+                          setCurrentProcess('');
+                          setCurrentStep(0);
+                          setTotalSteps(0);
+                          setTrainingLogs([]);
+                          setOutputFiles({});
+                          setShowOutputFiles(false);
+                          setUploadedImages([]);
+                        } else  {
+                          handleStartTraining();
+                        }
+                      }}
+                      disabled={isLoading || (trainingStatus !== 'idle' && trainingStatus !== 'completed')}
                       className={`w-full font-semibold py-4 rounded-xl ${
-                        trainingStatus === 'idle'
-                          ? 'bg-[#222620] text-[#85e178]'
+                        trainingStatus === 'idle' || trainingStatus === 'completed'
+                          ? 'bg-[#222620] text-[#85e178] hover:bg-[#2d322b]'
                           : 'bg-[#85e178] text-[#222620]'
-                      } text-xl mb-6`}
+                      } text-xl mb-6 transition-colors duration-200`}
                     >
                       {isLoading ? 'Starting Training...' : 
                        trainingStatus === 'idle' ? 'Start Training' : 
-                       trainingStatus === 'completed' ? 'Training Completed' : 
+                       trainingStatus === 'completed' ? 'Start New Training' : 
                        'Training in Progress'}
                     </button>
                     {trainingStatus !== 'idle' && renderTrainingProgress()}
