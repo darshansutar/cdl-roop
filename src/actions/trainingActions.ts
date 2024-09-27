@@ -85,7 +85,7 @@ export async function checkTrainingStatus(requestId: string) {
         response.currentProcess = 'Training completed';
         if ('output' in result && result.output) {
           console.log('Training output:', JSON.stringify(result.output, null, 2));
-          const output = result.output as any;
+          const output = result.output as Record<string, string>;
           response.outputFiles = {
             diffusers_lora_file: {
               url: output.diffusers_lora_file,

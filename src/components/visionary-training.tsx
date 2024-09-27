@@ -58,7 +58,7 @@ export function VisionaryTrainingComponent() {
 
   const [currentProcess, setCurrentProcess] = useState<string>('');
  
-  const [outputFiles, setOutputFiles] = useState<{[key: string]: any}>({});
+  const [outputFiles, setOutputFiles] = useState<{[key: string]: { url: string; file_name: string }}>({});
   const [showOutputFiles, setShowOutputFiles] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [totalSteps, setTotalSteps] = useState(0);
