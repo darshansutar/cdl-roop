@@ -78,56 +78,24 @@ export async function checkTrainingStatus(requestId: string) {
         if ('output' in result && result.output) {
           console.log('Training output:', JSON.stringify(result.output, null, 2));
           const output = result.output as any;
-          response.outputFiles = {};
-
-          if (output.diffusers_lora_file) {
-            const fileData = await fetchFileData(output.diffusers_lora_file);
-            response.outputFiles['diffusers_lora_file.safetensors'] = {
+          response.outputFiles = {
+            diffusers_lora_file: {
               url: output.diffusers_lora_file,
-              content_type: 'application/octet-stream',
-              file_name: 'diffusers_lora_file.safetensors',
-              file_size: fileData.size,
-              file_data: fileData.data
-            };
-          }
-
-          if (output.config_file) {
-            const fileData = await fetchFileData(output.config_file);
-            response.outputFiles['config_file.json'] = {
+              file_name: 'diffusers_lora_file.safetensors'
+            },
+            config_file: {
               url: output.config_file,
-              content_type: 'application/json',
-              file_name: 'config_file.json',
-              file_size: fileData.size,
-              file_data: fileData.data
-            };
-          }
-
-          if (output.debug_caption_files) {
-            const fileData = await fetchFileData(output.debug_caption_files);
-            response.outputFiles['debug_caption_files.tar.gz'] = {
+              file_name: 'config.json'
+            },
+            debug_caption_files: {
               url: output.debug_caption_files,
-              content_type: 'application/gzip',
-              file_name: 'debug_caption_files.tar.gz',
-              file_size: fileData.size,
-              file_data: fileData.data
-            };
-          }
-
-          if (output.experimental_multi_checkpoints && output.experimental_multi_checkpoints.length > 0) {
-            for (let index = 0; index < output.experimental_multi_checkpoints.length; index++) {
-              const checkpoint = output.experimental_multi_checkpoints[index];
-              const fileData = await fetchFileData(checkpoint);
-              response.outputFiles[`checkpoint_${index + 1}.safetensors`] = {
-                url: checkpoint,
-                content_type: 'application/octet-stream',
-                file_name: `checkpoint_${index + 1}.safetensors`,
-                file_size: fileData.size,
-                file_data: fileData.data
-              };
+              file_name: 'debug_caption_files.zip'
+            },
+            experimental_multi_checkpoints: {
+              url: output.experimental_multi_checkpoints,
+              file_name: 'experimental_multi_checkpoints.zip'
             }
-          }
-        } else {
-          console.warn('No output files in the result');
+          };
         }
       }
 
@@ -144,6 +112,10 @@ export async function checkTrainingStatus(requestId: string) {
 
 async function fetchFileData(url: string) {
   const response = await fetch(url);
+  if (!response.ok) {
+    console.error(`Failed to fetch file from ${url}: ${response.statusText}`);
+    return { size: 0, data: '' }; // Return empty data on error
+  }
   const arrayBuffer = await response.arrayBuffer();
   const base64 = Buffer.from(arrayBuffer).toString('base64');
   return {

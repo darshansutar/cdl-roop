@@ -16,6 +16,9 @@ import LoginButton from './ui/LoginLogoutButton'
 import { useRouter } from 'next/navigation'
 import { signout } from '@/lib/auth-actions'
 import { startTraining } from '@/actions/trainingActions';
+import TextToImagePage from '../components/TextToImagePage'
+import JSZip from 'jszip';
+import { saveAs } from 'file-saver';
 
 
 const LockedPageOverlay = () => (
@@ -55,11 +58,11 @@ export function VisionaryTrainingComponent() {
 
   const [currentProcess, setCurrentProcess] = useState<string>('');
  
-  const [outputFiles, setOutputFiles] = useState<{[key: string]: {url: string, content_type: string, file_name: string, file_size: number, file_data: string}}>({});
+  const [outputFiles, setOutputFiles] = useState<{[key: string]: any}>({});
+  const [showOutputFiles, setShowOutputFiles] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [totalSteps, setTotalSteps] = useState(0);
   const [trainingLogs, setTrainingLogs] = useState<string[]>([]);
-  const [showOutputFiles, setShowOutputFiles] = useState(false);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -110,52 +113,18 @@ export function VisionaryTrainingComponent() {
             setTrainingProgress(newProgress);
           }
         }
-        if (data.status === 'completed') {
-          console.log('Training completed. Raw output files:', JSON.stringify(data.outputFiles, null, 2));
-          
-          // Set the output files based on the provided structure
-          const outputFiles = {
-            config_file: {
-              url: "https://storage.googleapis.com/fal-flux-lora/efcbc41b2d034fd5ba079b323f4fb1ae_config.json",
-              file_name: "config.json",
-              file_size: 1357,
-              content_type: "application/octet-stream",
-              file_data: ''
-            },
-            diffusers_lora_file: {
-              url: "https://storage.googleapis.com/fal-flux-lora/ed29b9e07a144a7585748d6af4147690_lora.safetensors",
-              file_name: "lora.safetensors",
-              file_size: 171969384,
-              content_type: "application/octet-stream",
-              file_data: ''
-            }
-          };
 
-          if (outputFiles && Object.keys(outputFiles).length > 0) {
-            console.log('Setting output files');
-            setOutputFiles(outputFiles); // Set output files only once
+        if (data.status === 'completed') {
+          console.log('Training completed. Raw output data:', JSON.stringify(data, null, 2));
+          
+          if (data.output) {
+            console.log('Output files:', JSON.stringify(data.output, null, 2));
+            setOutputFiles(data.output);
             setShowOutputFiles(true);
-            
-            // Create download links for each output file
-            const container = document.getElementById('outputFilesContainer');
-            if (container) {
-              container.innerHTML = ''; // Clear previous links to avoid duplicates
-              Object.entries(outputFiles).forEach(([key, fileInfo]: [string, any]) => {
-                const a = document.createElement('a');
-                a.href = fileInfo.url; // Use the URL directly
-                a.download = fileInfo.file_name;
-                a.textContent = `Download ${fileInfo.file_name}`;
-                a.className = 'text-[#85e178] underline';
-                container.appendChild(a);
-              });
-            } else {
-              console.warn('Output files container not found');
-            }
           } else {
-            console.warn('No output files received');
-            setShowOutputFiles(true);
-            toast.error('Training completed, but no output files were generated. Please check the logs and try again.');
+            console.log('No output files found in the response');
           }
+
           setTrainingStatus('completed');
           eventSource.close();
           toast.success('Training completed successfully!');
@@ -178,51 +147,31 @@ export function VisionaryTrainingComponent() {
     }
   }, [trainingRequestId]);
 
-  const handleDownloadFile = (fileName: string, fileData: string, contentType: string) => {
-    const blob = new Blob([Buffer.from(fileData, 'base64')], { type: contentType });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.style.display = 'none';
-    a.href = url;
-    a.download = fileName;
-    document.body.appendChild(a);
-    a.click();
-    window.URL.revokeObjectURL(url);
+  const handleDownloadFile = (fileUrl: string, fileName: string) => {
+    saveAs(fileUrl, fileName);
   };
 
   const renderOutputFiles = () => {
-    console.log('Rendering output files. showOutputFiles:', showOutputFiles, 'outputFiles:', outputFiles);
-    if (!showOutputFiles) {
-      console.log('Not rendering output files');
-      return null;
-    }
-
     if (Object.keys(outputFiles).length === 0) {
-      return (
-        <div className="mt-6 p-4 bg-[#222620] rounded-xl">
-          <h4 className="text-lg font-semibold mb-4 text-[#85e178]">Training Completed</h4>
-          <p className="text-[#85e178]">The training process has completed, but no output files were generated. This might be due to an issue with the training process. Please try again or contact support if the problem persists.</p>
-        </div>
-      );
+      return null;
     }
 
     return (
       <div className="mt-6 p-4 bg-[#222620] rounded-xl">
         <h4 className="text-lg font-semibold mb-4 text-[#85e178]">Output Files</h4>
-        <div className="space-y-2">
-          {Object.entries(outputFiles).map(([fileName, fileInfo]) => (
-            <div key={fileName} className="flex items-center justify-between">
-              <span className="text-[#85e178]">{fileInfo.file_name}</span>
+        <ul className="space-y-2">
+          {Object.entries(outputFiles).map(([key, file]: [string, any]) => (
+            <li key={key} className="flex justify-between items-center">
+              <span className="text-[#85e178]">{key}</span>
               <button
-                onClick={() => handleDownloadFile(fileInfo.file_name, fileInfo.file_data, fileInfo.content_type)}
-                className="flex items-center px-3 py-1 bg-[#85e178] text-[#222620] rounded-md hover:bg-[#a1e99b] transition-colors"
+                onClick={() => handleDownloadFile(file.url, file.file_name)}
+                className="bg-[#85e178] text-[#222620] px-3 py-1 rounded-lg hover:bg-[#a1e99b] transition-colors"
               >
-                <Download size={16} className="mr-2" />
                 Download
               </button>
-            </div>
+            </li>
           ))}
-        </div>
+        </ul>
       </div>
     );
   };
@@ -759,20 +708,7 @@ export function VisionaryTrainingComponent() {
 
                     <button
                       onClick={() => {
-                        if (trainingStatus === 'completed') {
-                          // Reset the training state and prepare for a new training session
-                          setTrainingStatus('idle');
-                          setTrainingProgress(0);
-                          setCurrentProcess('');
-                          setCurrentStep(0);
-                          setTotalSteps(0);
-                          setTrainingLogs([]);
-                          setOutputFiles({});
-                          setShowOutputFiles(false);
-                          setUploadedImages([]);
-                        } else  {
-                          handleStartTraining();
-                        }
+                        handleStartTraining();
                       }}
                       disabled={isLoading || (trainingStatus !== 'idle' && trainingStatus !== 'completed')}
                       className={`w-full font-semibold py-4 rounded-xl ${
@@ -787,7 +723,7 @@ export function VisionaryTrainingComponent() {
                        'Training in Progress'}
                     </button>
                     {trainingStatus !== 'idle' && renderTrainingProgress()}
-                    {/* {showOutputFiles && renderOutputFiles()} */}
+                    {trainingStatus === 'completed' && renderOutputFiles()}
                     <br />
                     <br />
 
@@ -842,12 +778,18 @@ export function VisionaryTrainingComponent() {
               <ImageToVideoPage />
             </div>
           )
+        case 'Text to Image':
+          return (
+            <div className="h-full overflow-auto">
+              <TextToImagePage />
+            </div>
+          )
         default:
           return <WelcomePage showLoginButton={showLoginButton} />
       }
     };
 
-    if (currentPage === 'Discover' || currentPage === 'New Model' || currentPage === 'Image to Video') {
+    if (currentPage === 'Discover' || currentPage === 'New Model' || currentPage === 'Image to Video' || currentPage === 'Text to Image') {
       return (
         <PageWrapper isLocked={!user}>
           {content()}
@@ -979,6 +921,7 @@ export function VisionaryTrainingComponent() {
               <li><HeaderOption icon={Home} label="Home" /></li>
               <li><HeaderOption icon={Compass} label="Discover" /></li>
               <li><HeaderOption icon={Box} label="New Model" /></li>
+              <li><HeaderOption icon={Type} label="Text to Image" /></li>
               <li><HeaderOption icon={Camera} label="Image to Video" /></li>
             </ul>
           </nav>
@@ -1026,6 +969,7 @@ export function VisionaryTrainingComponent() {
               <li><HeaderOption icon={Home} label="Home" /></li>
               <li><HeaderOption icon={Compass} label="Discover" /></li>
               <li><HeaderOption icon={Box} label="New Model" /></li>
+              <li><HeaderOption icon={Type} label="Text to Image" /></li>
               <li><HeaderOption icon={Camera} label="Image to Video" /></li>
             </ul>
           </nav>

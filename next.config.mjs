@@ -4,9 +4,8 @@ const nextConfig = {
     domains: ['fal.ai'],
   },
   experimental: {
-    serverActions: {
-      bodySizeLimit: '100mb' // Increase this value as needed
-    }
+    serverActions: true,
+    serverActionsBodySizeLimit: '100mb'
   },
   async headers() {
     return [
