@@ -4,7 +4,7 @@ import * as fal from "@fal-ai/serverless-client";
 import JSZip from 'jszip';
 
 export async function startTraining({
-  modelName,
+ 
   selectedType,
   imageDataUrls,
 }: {
@@ -54,15 +54,23 @@ export async function checkTrainingStatus(requestId: string) {
 
     if (result && typeof result === 'object' && 'status' in result) {
       const status = result.status as 'IN_PROGRESS' | 'COMPLETED' | 'IN_QUEUE' | 'FAILED';
-      const logs = (result as any).logs || [];
+      const logs = (result as { logs?: Array<{ timestamp: string; message: string }> }).logs || [];
       
       // Format the logs
-      const formattedLogs = logs.map((log: any) => ({
+      const formattedLogs = logs.map((log: { timestamp: string; message: string }) => ({
         timestamp: new Date(log.timestamp).toLocaleTimeString(),
         message: log.message
       }));
 
-      const response: any = {
+      const response: {
+        status: string;
+        progress: number;
+        currentProcess: string;
+        currentStep: number;
+        totalSteps: number;
+        logs: Array<{ timestamp: string; message: string }>;
+        outputFiles: Record<string, { url: string; file_name: string }>;
+      } = {
         status: status.toLowerCase(),
         progress: 0,
         currentProcess: '',
@@ -110,24 +118,3 @@ export async function checkTrainingStatus(requestId: string) {
   }
 }
 
-async function fetchFileData(url: string) {
-  const response = await fetch(url);
-  if (!response.ok) {
-    console.error(`Failed to fetch file from ${url}: ${response.statusText}`);
-    return { size: 0, data: '' }; // Return empty data on error
-  }
-  const arrayBuffer = await response.arrayBuffer();
-  const base64 = Buffer.from(arrayBuffer).toString('base64');
-  return {
-    size: arrayBuffer.byteLength,
-    data: base64
-  };
-}
-
-function getCurrentProcess(progress: number): string {
-  if (progress < 20) return 'Initializing training';
-  if (progress < 40) return 'Processing images';
-  if (progress < 60) return 'Training model';
-  if (progress < 80) return 'Fine-tuning';
-  return 'Finalizing model';
-}

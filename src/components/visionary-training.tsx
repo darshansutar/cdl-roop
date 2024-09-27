@@ -3,7 +3,7 @@ import { toast } from 'react-hot-toast'
 import { useState, useEffect} from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { User } from "@supabase/supabase-js";
-import { Upload,Package, User as Person, Paintbrush, Box, Type, PawPrint, Utensils, CheckCircle, X, Home, Compass, Camera, Lock, LogOut, Menu, UserCircle, Trash2, Download } from 'lucide-react'
+import { Upload,Package, User as Person, Paintbrush, Box, Type, PawPrint, Utensils, CheckCircle, X, Home, Compass, Camera, Lock, LogOut, Menu, UserCircle, Trash2 } from 'lucide-react'
 import { CircularProgressbar, buildStyles } from 'react-circular-progressbar';
 import 'react-circular-progressbar/dist/styles.css';
 
@@ -17,7 +17,7 @@ import { useRouter } from 'next/navigation'
 import { signout } from '@/lib/auth-actions'
 import { startTraining } from '@/actions/trainingActions';
 import TextToImagePage from '../components/TextToImagePage'
-import JSZip from 'jszip';
+
 import { saveAs } from 'file-saver';
 
 
@@ -102,7 +102,7 @@ export function VisionaryTrainingComponent() {
         if (data.logs && data.logs.length > 0) {
           setTrainingLogs(prevLogs => [
             ...prevLogs,
-            ...data.logs.map((log: any) => `${log.timestamp}: ${log.message}`)
+            ...data.logs.map((log: { timestamp: string; message: string }) => `${log.timestamp}: ${log.message}`)
           ]);
           
           // Update progress based on the latest log
@@ -160,7 +160,7 @@ export function VisionaryTrainingComponent() {
       <div className="mt-6 p-4 bg-[#222620] rounded-xl">
         <h4 className="text-lg font-semibold mb-4 text-[#85e178]">Output Files</h4>
         <ul className="space-y-2">
-          {Object.entries(outputFiles).map(([key, file]: [string, any]) => (
+          {Object.entries(outputFiles).map(([key, file]: [string, { url: string; file_name: string }]) => (
             <li key={key} className="flex justify-between items-center">
               <span className="text-[#85e178]">{key}</span>
               <button
